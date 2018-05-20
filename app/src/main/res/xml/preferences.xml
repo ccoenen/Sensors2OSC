@@ -13,6 +13,22 @@
             android:numeric="integer"
             android:persistent="true"
             android:title="@string/port"/>
+        <org.sensors2.common.preferences.ExtendedEditTextPreference
+            android:defaultValue="localhost"
+            android:key="pref_comm_mqtt_host"
+            android:persistent="true"
+            android:title="@string/mqtt_host"/>
+        <org.sensors2.common.preferences.ExtendedEditTextPreference
+            android:defaultValue="1883"
+            android:key="pref_comm_mqtt_port"
+            android:numeric="integer"
+            android:persistent="true"
+            android:title="@string/mqtt_port"/>
+        <org.sensors2.common.preferences.ExtendedEditTextPreference
+            android:defaultValue="sensors2mqtt/"
+            android:key="pref_comm_mqtt_prefix"
+            android:persistent="true"
+            android:title="@string/mqtt_prefix"/>
     </PreferenceCategory>
    <!-- <PreferenceCategory android:title="@string/sensors">
         <org.sensors2.common.preferences.ExtendedEditTextPreference

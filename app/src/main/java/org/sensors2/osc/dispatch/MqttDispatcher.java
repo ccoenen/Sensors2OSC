@@ -1,12 +1,22 @@
 package org.sensors2.osc.dispatch;
 
+import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
-import android.os.Bundle;
-import android.os.Message;
+import android.util.Log;
+import android.widget.Toast;
 
-import org.sensors2.common.dispatch.Measurement;
+import org.eclipse.paho.client.mqttv3.IMqttActionListener;
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
+import org.eclipse.paho.client.mqttv3.IMqttToken;
+import org.eclipse.paho.client.mqttv3.MqttCallback;
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.sensors2.common.dispatch.DataDispatcher;
+import org.sensors2.common.dispatch.Measurement;
+
+import org.eclipse.paho.android.service.MqttAndroidClient;
+import org.eclipse.paho.client.mqttv3.MqttException;
 import org.sensors2.osc.sensors.Parameters;
 
 import java.util.ArrayList;
@@ -15,16 +25,41 @@ import java.util.List;
 /**
  * Created by thomas on 07.11.14.
  */
-public class OscDispatcher implements DataDispatcher {
+public class MqttDispatcher implements DataDispatcher {
     private List<SensorConfiguration> sensorConfigurations = new ArrayList<SensorConfiguration>();
-    private OscCommunication communication;
+    private MqttAndroidClient communication;
     private float[] gravity;
     private float[] geomagnetic;
     private SensorManager sensorManager;
 
-    public OscDispatcher() {
-        communication = new OscCommunication("OSC dispatcher thread", Thread.MIN_PRIORITY);
-        communication.start();
+    public MqttDispatcher(final Context context) {
+        MqttConfiguration config = MqttConfiguration.getInstance();
+        communication = new MqttAndroidClient(context, config.getUri(), "abc");
+
+        MqttConnectOptions mqttConnectOptions = new MqttConnectOptions();
+        mqttConnectOptions.setAutomaticReconnect(true);
+        mqttConnectOptions.setCleanSession(false);
+        // mqttConnectOptions.setUserName(config.username);
+        // mqttConnectOptions.setPassword(config.password.toCharArray());
+
+        try {
+            communication.connect(mqttConnectOptions, null, new IMqttActionListener() {
+                @Override
+                public void onSuccess(IMqttToken asyncActionToken) {
+                    Toast.makeText(context, "connected", Toast.LENGTH_SHORT);
+                    Log.d("mqtt", "connection success");
+                }
+
+                @Override
+                public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
+                    Toast.makeText(context, exception.toString(), Toast.LENGTH_LONG);
+                    Log.w("mqtt", "connection failed " + exception.toString());
+                }
+            });
+        } catch (MqttException e) {
+            Toast.makeText(context, e.toString(), Toast.LENGTH_LONG);
+            Log.e("mqtt", "connection failed unexpectedly " + e.toString());
+        }
     }
 
     public void addSensorConfiguration(SensorConfiguration sensorConfiguration) {
@@ -79,27 +114,35 @@ public class OscDispatcher implements DataDispatcher {
         if (!sensorConfiguration.sendingNeeded(values)) {
             return;
         }
-        Message message = new Message();
-        Bundle data = new Bundle();
-        data.putFloatArray(Bundling.VALUES, values);
-        data.putString(Bundling.OSC_PARAMETER, sensorConfiguration.getOscParam());
-        message.setData(data);
-        OscHandler handler = communication.getOscHandler();
-        handler.sendMessage(message);
+        if (!communication.isConnected()) {
+            Log.d("mqtt", "not connected yet");
+            return;
+        }
+
+        MqttMessage m = new MqttMessage();
+        m.setPayload(Float.toString(values[0]).getBytes());
+        try {
+            communication.publish(MqttConfiguration.getInstance().topicPrefix + sensorConfiguration.getOscParam(), m);
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
     }
 
     private void trySend(SensorConfiguration sensorConfiguration, String value) {
-        if (!sensorConfiguration.sendingNeeded(new float[0])) {
+        if (!communication.isConnected()) {
+            Log.d("mqtt", "not connected yet");
             return;
         }
-        Message message = new Message();
-        Bundle data = new Bundle();
-        data.putString(Bundling.STRING_VALUE, value);
-        data.putString(Bundling.OSC_PARAMETER, sensorConfiguration.getOscParam());
-        message.setData(data);
-        OscHandler handler = communication.getOscHandler();
-        handler.sendMessage(message);
+
+        MqttMessage m = new MqttMessage();
+        m.setPayload(value.getBytes());
+        try {
+            communication.publish(MqttConfiguration.getInstance().topicPrefix + sensorConfiguration.getOscParam(), m);
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
     }
+
 
     public void setSensorManager(SensorManager sensorManager) {
         this.sensorManager = sensorManager;

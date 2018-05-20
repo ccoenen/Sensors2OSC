@@ -43,6 +43,7 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".activities.StartUpActivity"/>
         </activity>
+        <service android:name="org.eclipse.paho.android.service.MqttService"></service>
     </application>
 
     <uses-permission android:name="android.permission.INTERNET"/>

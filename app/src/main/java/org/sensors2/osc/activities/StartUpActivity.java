@@ -7,7 +7,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.graphics.Point;
-import android.graphics.drawable.GradientDrawable;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorManager;
@@ -41,9 +40,8 @@ import org.sensors2.common.sensors.Parameters;
 import org.sensors2.common.sensors.SensorActivity;
 import org.sensors2.common.sensors.SensorCommunication;
 import org.sensors2.osc.R;
-import org.sensors2.osc.dispatch.OscConfiguration;
-import org.sensors2.osc.dispatch.OscDispatcher;
-import org.sensors2.osc.dispatch.SensorConfiguration;
+import org.sensors2.osc.dispatch.MqttDispatcher;
+import org.sensors2.osc.dispatch.MqttConfiguration;
 import org.sensors2.osc.fragments.MultiTouchFragment;
 import org.sensors2.osc.fragments.SensorFragment;
 import org.sensors2.osc.fragments.StartupFragment;
@@ -58,7 +56,7 @@ public class StartUpActivity extends FragmentActivity implements SensorActivity,
 
     private Settings settings;
     private SensorCommunication sensorCommunication;
-    private OscDispatcher dispatcher;
+    private MqttDispatcher dispatcher;
     private SensorManager sensorManager;
     private PowerManager.WakeLock wakeLock;
     private boolean active;
@@ -79,7 +77,7 @@ public class StartUpActivity extends FragmentActivity implements SensorActivity,
         setContentView(R.layout.activity_main);
 
         this.settings = this.loadSettings();
-        this.dispatcher = new OscDispatcher();
+        this.dispatcher = new MqttDispatcher(getApplicationContext());
         this.sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         this.dispatcher.setSensorManager(this.sensorManager);
         this.sensorCommunication = new SensorCommunication(this);
@@ -301,11 +299,10 @@ public class StartUpActivity extends FragmentActivity implements SensorActivity,
 
     private Settings loadSettings() {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
-        Settings settings = new Settings(preferences);
-        OscConfiguration oscConfiguration = OscConfiguration.getInstance();
-        oscConfiguration.setHost(settings.getHost());
-        oscConfiguration.setPort(settings.getPort());
-        return settings;
+        MqttConfiguration mqttConfiguration = MqttConfiguration.getInstance();
+        mqttConfiguration.configureFromPreferences(preferences);
+        Settings s = new Settings(preferences);
+        return s;
     }
 
     @Override
