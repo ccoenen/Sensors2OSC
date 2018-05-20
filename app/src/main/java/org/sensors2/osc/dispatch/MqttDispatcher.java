@@ -120,7 +120,11 @@ public class MqttDispatcher implements DataDispatcher {
         }
 
         MqttMessage m = new MqttMessage();
-        m.setPayload(Float.toString(values[0]).getBytes());
+        String message = "";
+        for (float f : values) {
+            message += "," + Float.toString(f);
+        }
+        m.setPayload(message.substring(1).getBytes());
         try {
             communication.publish(MqttConfiguration.getInstance().topicPrefix + sensorConfiguration.getOscParam(), m);
         } catch (MqttException e) {
